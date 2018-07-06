@@ -3,20 +3,31 @@
 		<el-button type="text" v-on:click="open">添加商铺</el-button>
 		<!-- 过滤 -->
 		<el-col>
-			<el-form :inline = true :model='filters'>
+			<el-form :inline = true :model="filters">
 				<el-form-item>
-					<el-input v-model="filters.name" placeholder="商铺名称" @keyup.enter.native="getUsers"></el-input>
+					<el-select  v-model="stateType" clearable placeholder="业态类型" @change="selectType">
+					  <el-option v-for="item in items"  :key="item.bizFormatId" :label = "item.bizFormatType" :value = "item.bizFormatId"></el-option>
+				</el-select>
 				</el-form-item>
 				<el-form-item>
-					<el-input v-model="filters.floor" placeholder="所属楼层" @keyup.enter.native="getUsers"></el-input>
+					<el-select placeholder="状态" clearable @change="selectShopEnabled" v-model="sleectedShop">
+            <el-option v-for="selectShop in selectShops" :key="selectShop.value" :label="selectShop.label" :value="selectShop.value"></el-option>
+          </el-select>
 				</el-form-item>
-				<!-- <el-form-item>
+        <el-form-item>
+          <el-select  placeholder="楼层" v-model="floorNum" clearable  @change="selectFloor">
+					<el-option v-for="option in options"  :key="option.floorId" :label = "option.floorName" :value = "option.floorId"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item style="float:right">
 					<el-button type="primary" v-on:click="getUsers">查询</el-button>
-				</el-form-item> -->
+				</el-form-item>
+        <el-form-item style="float:right"><el-input clearable v-model="filters.findName" placeholder="商铺名称"></el-input></el-form-item>
+				
 			</el-form>
 		</el-col>
 		<!-- 创建页面 -->
-		<el-dialog class="create" :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
+		<el-dialog class="create" :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
 			<el-form :model="createForm" label-width="80px" :rules="editFormRules" ref="createForm" style="width:300px">
 				<el-form-item label="商铺编码" prop="shopNumber">
 					<el-input v-model="createForm.shopNumber" auto-complete="off"></el-input>
@@ -27,23 +38,24 @@
 				<el-form-item label="商铺英文名称" prop="shopEnglishName">
 					<el-input  v-model="createForm.shopEnglishName" auto-complete="off" ></el-input>
 				</el-form-item>
-				<el-form-item label="所属楼层" prop="floorName">
-					<el-select  v-model="createForm.floorId" aria-placeholder="请选择" @change = 'addFloorId'>
+				<el-form-item label="所属楼层" prop="floorId">
+					<el-select type="number"  v-model="createForm.floorId" aria-placeholder="请选择">
 					<el-option v-for="option in options"  :key="option.floorId" :label = "option.floorName" :value = "option.floorId"></el-option>
 				</el-select>
 				</el-form-item>
-				<el-form-item label="业务类型" prop="bizFormatNumber" >
-          <el-select  v-model="createForm.bizFormatId" aria-placeholder="请选择" @change = 'addbizFormatId'>
-					<el-option v-for="item in items"  :key="item.bizFormatId" :label = "item.bizFormatNumber" :value = "item.bizFormatId"></el-option>
+				<el-form-item label="业务类型" prop="bizFormatId" >
+          <el-select  type="number" v-model="createForm.bizFormatId" aria-placeholder="请选择">
+					<el-option v-for="item in items"  :key="item.bizFormatId" :label = "item.bizFormatType" :value = "item.bizFormatId"></el-option>
 				</el-select>
 				</el-form-item>
 				<el-form-item label="门牌号" prop="shopHouseNumber">
 					<el-input  v-model="createForm.shopHouseNumber"></el-input>
 				</el-form-item>
-				<el-form-item label = "LOGO" prop="logo">
-					<el-upload
+        <el-form-item  prop = 'logo' label="LOGO" class="logoBefore">
+					<el-upload  
+             ref="logo"
              class="avatar-uploader"
-             action="http://192.168.1.103:9000/shop/logo"
+             action='http://192.168.1.146:9000/shop/logo'
              :show-file-list="false"
              :on-success="handleAvatarSuccess"
              :before-upload="beforeAvatarUpload">
@@ -51,9 +63,12 @@
              <i v-else class="el-icon-plus avatar-uploader-icon"></i>
             </el-upload>
 				</el-form-item>
-				<el-form-item  label = "商铺图片" prop="shoppicture" style="width:600px">
-					<el-upload  action='http://192.168.1.103:9000/shop/pictures' 
+				<el-form-item  label = "商铺图片" prop="shoppicture" style="width:600px" class="pic">
+					<el-upload  
+                ref="upload"
+                action='http://192.168.1.146:9000/shop/pictures' 
 								list-type='picture-card' 
+                :file-list="fileList"
                 :on-success = "handlePictureCardPreview"
 								:on-remove = "handleRemove" 
                 multiple
@@ -74,16 +89,11 @@
 				<el-input v-model="createForm.shopWeight"></el-input>
 				</el-form-item>
         <el-form-item>
-            <el-button v-if="dialogStatus=='create'" type="primary" @click="createData">确定</el-button>
-        		<el-button v-else type="primary" @click="updateData">修改</el-button>
+            <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">确定</el-button>
+        		<el-button v-else type="primary" @click="updateData('createForm')">修改</el-button>
             <el-button @click.native="resetForm('createForm')">取消</el-button>
         </el-form-item>
 			</el-form>
-			<!-- <div slot="footer" class="dialog-footer">
-			 <el-button @click.native="dialogFormVisible=false">取消</el-button>
-			  <el-button v-if="dialogStatus=='create'" type="primary" @click="createData">确定</el-button>
-        		<el-button v-else type="primary" @click="updateData">修改</el-button>
-			</div> -->
 		</el-dialog>
 		<!-- 列表 -->
 		<el-table :data="shops" highlight-current-row style="width: 100%;">
@@ -95,7 +105,7 @@
 			</el-table-column>
 			<el-table-column prop="bizFormatType" label="业态类型" width=120px sortable>
 			</el-table-column>
-			<el-table-column prop="shopHouseNumber" label="门牌号" min-width=120px sortable>
+			<el-table-column prop="shopHouseNumber" label="门牌号" width=120px sortable>
 			</el-table-column>
 			<el-table-column prop="shopTel" label="联系方式" width=120px sortable>
 			</el-table-column>
@@ -104,9 +114,10 @@
            {{scope.row.isShopEnabled | filterOnline}}
         </template> 
       </el-table-column>
-      <el-table-column align="center" label="操作" width="230" class-name="small-padding fixed-width">
+      <el-table-column align="center" label="操作" min-width="230" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="handleDel(scope.$index, scope.row)">删除</el-button>
           <el-button @click="changeOnline(scope.row,scope.row.isShopEnabled)" type="text" size="small">{{scope.row.isShopEnabled===0?"启用":"停用"}}</el-button>
         </template>
       </el-table-column>
@@ -126,9 +137,10 @@ import {
   removeUser,
   editUser,
   addUser,
-  getFloorPage,
-  getStatePage,
-  switchStart
+  switchStart,
+  getPic,
+  getBusinessFormats,
+  getFloors
 } from "../../api/api";
 export default {
   data() {
@@ -140,7 +152,6 @@ export default {
       },
       dialogFormVisible: false,
       createForm: {
-        shopId: "0",
         shopNumber: "",
         shopName: "",
         floorId: "",
@@ -151,17 +162,35 @@ export default {
         addr: "",
         shopLogoPath: "",
         isShopEnabled: "",
-        shopWeight: "",
+        shopWeight: 100,
         floorName: "",
         bizFormatType: "",
         shoppicture: "",
-        logo: ""
+        logo: "",
+        shopDescript: ""
+      },
+      newCreateForm: {
+        shopNumber: "",
+        shopName: "",
+        floorId: "",
+        bizFormatId: "",
+        shopEnglishName: "",
+        num: "",
+        addShopTime: "",
+        addr: "",
+        shopLogoPath: "",
+        isShopEnabled: "",
+        shopWeight: 100,
+        floorName: "",
+        bizFormatType: "",
+        shoppicture: "",
+        logo: "",
+        shopDescript: ""
       },
       pictureLists: [],
       options: [],
-      optionsValue: "",
       items: [],
-      itemsValue: "",
+      selectShops: [{ label: "启用", value: 1 }, { label: "停用", value: 0 }],
       dialogVisible: "false",
       dialogImageUrl: "",
       imageUrl: "",
@@ -169,10 +198,6 @@ export default {
       total: 0,
       pageNum: 1,
       pageSize: 10,
-      filters: {
-        name: "",
-        floor: ""
-      },
       loading: false,
       editFormRules: {
         shopName: [
@@ -181,23 +206,35 @@ export default {
         shopNumber: [
           { required: true, message: "请输入商铺编码", trigger: "blur" }
         ],
-        floorName: [
-          { required: true, message: "请输入商铺楼层", trigger: "blur" }
+        floorId: [
+          {
+            type: "number",
+            required: true,
+            message: "请输入商铺楼层",
+            trigger: "blur"
+          }
         ],
-        bizFormatType: [
-          { required: true, message: "请输入业务类型", trigger: "blur" }
+        bizFormatId: [
+          {
+            type: "number",
+            required: true,
+            message: "请输入业务类型",
+            trigger: "blur"
+          }
         ],
         shopHouseNumber: [
           { required: true, message: "请输入门牌号", trigger: "blur" }
-        ],
-        logo: [{ required: true, message: "请上传LOGO", trigger: "blur" }],
-        shoppicture: [
-          { required: true, message: "请上传商铺图片", trigger: "blur" }
         ]
       },
-      value1: true,
-      value2: true,
-      flag: ""
+      shopEnableds: [],
+      floorNum: "",
+      stateType: "",
+      sleectedShop: "",
+      filters: {
+        findName: ""
+      },
+      fileList: [],
+      pics: [],
     };
   },
   methods: {
@@ -205,22 +242,35 @@ export default {
       this.dialogStatus = "create";
       this.dialogFormVisible = true;
     },
-    handleRemove(file, fileList) {
-      console.log(file, fileList);
+    close() {
+      this.dialogFormVisible = false;
+      this.imageUrl = "";
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.$refs.upload.clearFiles();
+      this.fileList = [];
     },
-    handlePictureCardPreview(file, fileList, res) {
-  
-      let pictureList = {};
-      pictureList.shopPictureName = res[0].response.data[0].fileNewName;
-      pictureList.shopPictureSize = res[0].response.data[0].fileSize;
-      pictureList.shopPicturePath = res[0].response.data[0].filePath;
-  
-      this.pictureLists.push(pictureList);
-      console.log(this.pictureLists);
+    handleRemove(file, fileList) {
+      this.pictureLists = fileList;
+      for (let i = 0; i < this.pics.length; i++) {
+        if (this.pics[i].shopPicturePath == file.url) {
+          this.pics.splice(this.pics[i], 1);
+        }
+      }
+    },
+    handlePictureCardPreview(res, file, fileList) {
+      if (this.dialogStatus == "create") {
+        let pictureList = {};
+        this.pictureLists = fileList;
+      } else {
+        let pic = {};
+        pic.shopPictureName = file.response.data[0].fileNewName;
+        pic.shopPicturePath = file.response.data[0].filePath;
+        pic.shopPictureSize = file.response.data[0].fileSize;
+        this.pics.push(pic);
+      }
     },
     handleAvatarSuccess(res, file) {
       this.createForm.shopLogoPath = res.data.filePath;
-      console.log(this.createForm.shopLogoPath);
       this.imageUrl = URL.createObjectURL(file.raw);
     },
     beforeAvatarUpload(file) {
@@ -234,58 +284,115 @@ export default {
       // }
       // return isJPG && isLt2M;
     },
-    createData: function() {
-      // this.$refs[createForm].validate(valid => {
-      // this.$confirm("确认提交吗？", "提示", {}).then(() => {
-      this.createForm.shopId = parseInt(Math.random() * 100).toString();
-      let para = Object.assign({}, this.createForm);
-      let data = {};
-      data.bizShop = para;
-      data.pictureList = this.pictureLists;
-      addUser(data).then(res => {
-        console.log(res.data.msg);
-        if (res.data.status != 406) {
-          this.$message({
-            message: "提交成功",
-            type: "success"
-          });
-          this.$refs["createForm"].resetFields();
-          this.dialogFormVisible = false;
-          console.log(data);
-          this.getUsers();
+    createData(createForm) {
+      this.$refs[createForm].validate(valid => {
+        if (valid) {
+          let para = Object.assign({}, this.createForm);
+          let data = {};
+          data.bizShop = para;
+          data.pictureList = [];
+          for (let i = 0; i < this.pictureLists.length; i++) {
+            let pics = {};
+            pics.shopPictureName = this.pictureLists[
+              i
+            ].response.data[0].fileNewName;
+            pics.shopPictureSize = this.pictureLists[
+              i
+            ].response.data[0].fileSize;
+            pics.shopPicturePath = this.pictureLists[
+              i
+            ].response.data[0].filePath;
+            data.pictureList.push(pics);
+          }
+          if (data.pictureList.length != 0) {
+            if (this.imageUrl != "") {
+              addUser(data).then(res => {
+                if (res.data.code != 30002) {
+                  this.$message({
+                    message: "提交成功",
+                    type: "success"
+                  });
+                  this.$refs["createForm"].resetFields();
+                  this.dialogFormVisible = false;
+                  this.imageUrl = "";
+                  this.pictureLists = [];
+                  this.$refs.upload.clearFiles();
+                  this.getUsers();
+                } else {
+                  if (res.data.data.indexOf("name") != -1) {
+                    this.$confirm("商铺名称重复");
+                  } else {
+                    this.$confirm("商铺编码重复");
+                  }
+                }
+              });
+            } else {
+              this.$confirm("请上传商铺LOGO");
+            }
+          } else {
+            this.$confirm("请上传商铺图片");
+          }
         } else {
-          alert(res.data.msg);
+          console.log("error submit!!");
+          return false;
         }
       });
-      // });
-      // });
     },
     resetForm(createForm) {
       this.dialogFormVisible = false;
-      this.$refs[createForm].resetFields();
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.imageUrl = "";
+      this.$refs.upload.clearFiles();
+      this.fileList = [];
     },
 
     handleEdit: function(index, row) {
       this.dialogStatus = "update";
       this.dialogFormVisible = true;
       this.createForm = Object.assign({}, row);
+      this.imageUrl = row.shopLogoPath;
+      let para = {
+        id: row.shopId
+      };
+      getPic(para).then(res => {
+        console.log(res);
+        this.createForm.shopDescript = res.data.data.shopDescript;
+        if (res.data.data.length != 0) {
+          this.pics = res.data.data.pictures;
+          for (let i = 0; i < res.data.data.pictures.length; i++) {
+            this.fileList.push({
+              url: res.data.data.pictures[i].shopPicturePath
+            });
+          }
+        }
+      });
     },
     //编辑
-    updateData: function() {
-      this.$refs.createForm.validate(valid => {
-        this.$confirm("确认提交吗？", "提示", {}).then(() => {
-          let para = Object.assign({}, this.createForm);
-          //console.log(para);
-          editUser(para).then(res => {
-            this.$message({
-              message: "提交成功",
-              type: "success"
+    updateData(createForm) {
+      this.$refs[createForm].validate(valid => {
+        if (valid) {
+          this.$refs.createForm.validate(valid => {
+            // this.$confirm("确认提交吗？", "提示", {}).then(() => {
+            this.createForm.pictures = this.pics;
+            let para = Object.assign({}, this.createForm);
+            editUser(para).then(res => {
+              this.$message({
+                message: "提交成功",
+                type: "success"
+              });
+              this.$refs["createForm"].resetFields();
+              this.dialogFormVisible = false;
+              this.$refs.upload.clearFiles();
+              this.imageUrl = "";
+              this.fileList = [];
+              this.getUsers();
             });
-            this.$refs["createForm"].resetFields();
-            this.dialogFormVisible = false;
-            this.getUsers();
+            // });
           });
-        });
+        } else {
+          console.log("error submit!!");
+          return false;
+        }
       });
     },
     change_num(val) {
@@ -293,45 +400,42 @@ export default {
       this.getUsers();
     },
 
-    handleSizeChange(val) {},
+    handleSizeChange(val) {
+      this.pageSize = parseInt(val);
+      this.getUsers();
+    },
     //获取用户列表
 
     getUsers() {
       let para = {
-        name: this.filters.name,
-        floor: this.filters.floor,
+        shopName: this.filters.findName,
         pageSize: this.pageSize,
-        pageNum: this.pageNum
+        pageNum: this.pageNum,
+        floorId: this.floorNum,
+        bizFormatId: this.bizFormatId,
+        isShopEnabled: this.sleectedShop
       };
       getUserListPage(para).then(res => {
         this.total = res.data.data.total;
         this.shops = res.data.data.list;
         this.pageNum = res.data.data.pageNum;
         this.pageSize = res.data.data.pageSize;
-        console.log(res);
       });
-      getStatePage(para).then(res => {
-        console.log(res);
-        this.items = res.data.data.list;
+      getBusinessFormats().then(res => {
+        this.items = res.data.data;
       });
-      getFloorPage(para).then(res => {
-        console.log(res);
-        this.options = res.data.data.list;
+      getFloors().then(res => {
+        this.options = res.data.data;
       });
     },
     //删除
-    handleDel: function(index, row) {
+    handleDel(index, row) {
       this.$confirm("确认删除该记录吗?", "提示", {
         type: "warning"
       })
         .then(() => {
-          //this.listLoading = true;
-          //NProgress.start();
-          let para = { id: row.id };
-          removeUser(para).then(res => {
-            //this.listLoading = false;
-            //NProgress.done();
-            console.log(para);
+          let para = { id: row.shopId };
+          switchStart(para).then(res => {
             this.$message({
               message: "删除成功",
               type: "success"
@@ -341,25 +445,11 @@ export default {
         })
         .catch(() => {});
     },
-    addFloorId() {
-      // this.createForm.floorId = this.optionsValue;
-      console.log(this.createForm.floorId);
-    },
-    addbizFormatId() {
-      // this.createForm.bizFormatId = this.itemsValue;
-      console.log(this.itemsValue);
-    },
     handleModifyStatus(row, status) {
       this.$confirm("确定执行此操作吗？", "提示", {})
         .then(() => {
           let para = { id: row.shopId };
-          switchStart(para).then(res => {
-            // if(res.data.data === 0) {
-            //   this.flag = '停用'
-            // } else {
-            //   this.flag = '启用'
-            // }
-            console.log(this.flag);
+          removeUser(para).then(res => {
             this.getUsers();
           });
         })
@@ -375,17 +465,27 @@ export default {
             }
           }
           let para = { id: row.shopId };
-          switchStart(para).then(res => {
-            console.log(this.flag);
+          removeUser(para).then(res => {
             this.getUsers();
           });
         })
         .catch(() => {});
+    },
+    selectFloor() {
+      // this.floorId = this.floorNum;
+      this.getUsers();
+    },
+    selectType() {
+      this.bizFormatId = this.stateType;
+      this.getUsers();
+    },
+    selectShopEnabled() {
+      // this.isShop = this.sleectedShop;
+      this.getUsers();
     }
   },
   filters: {
     filterOnline(data) {
-      console.log(data)
       if (Number(data) == 0) {
         return "停用";
       } else {
@@ -421,5 +521,22 @@ export default {
   width: 178px;
   height: 178px;
   display: block;
+}
+
+.logoBefore::before {
+  position: relative;
+  left: 18px;
+  top: 28px;
+  content: "*";
+  color: #ff4949;
+  margin-right: 4px;
+}
+.pic::before {
+  position: relative;
+  left: 0;
+  top: 30px;
+  content: "*";
+  color: #ff4949;
+  margin-right: 4px;
 }
 </style>

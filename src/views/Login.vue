@@ -7,7 +7,8 @@
     <el-form-item prop="checkPass">
       <el-input type="password" v-model="ruleForm2.checkPass" auto-complete="off" placeholder="密码"></el-input>
     </el-form-item>
-    <el-checkbox v-model="checked" checked class="remember">记住密码</el-checkbox>
+    <!-- @change="change" -->
+    <el-checkbox v-model="checked"  class="remember">记住密码</el-checkbox>
     <el-form-item style="width:100%;">
       <el-button type="primary" style="width:100%;" @click.native.prevent="handleSubmit2" :loading="logining">登录</el-button>
       <!--<el-button @click.native.prevent="handleReset2">重置</el-button>-->
@@ -45,6 +46,13 @@ export default {
     },
     handleSubmit2(ev) {
       var _this = this;
+      if (_this.checked == true) {
+        window.localStorage.setItem("userName", _this.ruleForm2.account);
+        window.localStorage.setItem("userPwd", _this.ruleForm2.checkPass);
+      } else {
+        _this.clearCookie();
+      }
+
       this.$refs.ruleForm2.validate(valid => {
         if (valid) {
           this.logining = true;
@@ -64,9 +72,7 @@ export default {
               });
             } else {
               window.localStorage.setItem("token", JSON.stringify(data.data));
-
               this.$router.push({ path: "/state" });
-              console.log(token);
             }
           });
         } else {
@@ -74,7 +80,44 @@ export default {
           return false;
         }
       });
+    },
+
+    setCookie(c_name, c_pwd, exdays) {
+      var exdate = new Date();
+      exdate.setTime(exdate.getTime() + 24 * 60 * 60 * 1000 * exdays);
+      document.cookie =
+        "userName=" + c_name + ";path=/;expires=" + exdate.toLocaleString();
+      document.cookie =
+        "userPwd=" + c_pwd + ";path=/;expires=" + exdate.toLocaleString();
+    },
+    getCookie(userName) {
+      if (document.cookie.length > 0) {
+        var arr = document.cookie.split("; ");
+        for (var i = 0; i < arr.length; i++) {
+          var arr2 = arr[i].split("=");
+          if (arr2[0] == "userName") {
+            this.account = arr2[1];
+          } else if (arr2[0] == "userPwd") {
+            this.checkPass = arr2[1];
+          }
+        }
+      }
+    },
+    clearCookie: function() {
+      this.setCookie("", "", -1);
+    },
+    change() {
+      if (this.checked == true) {
+        this.ruleForm2.account = window.localStorage.getItem("userName");
+        this.ruleForm2.checkPass = window.localStorage.getItem("userPwd");
+      } else {
+        this.ruleForm2.account = "";
+        this.ruleForm2.checkPass = "";
+      }
     }
+  },
+  mounted() {
+    this.getCookie();
   }
 };
 </script>

@@ -1,22 +1,24 @@
 <template>
    <section>
      <el-button type="text" @click="open">添加地图</el-button>
-     <el-dialog  :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
-       <el-form :model="createForm" ref="createForm" :rules="rules" label-width="80px" style="100%"> 
+     <el-dialog  :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
+       <el-form :model="createForm" ref="createForm" :rules="rules" label-width="80px" style="width:300px"> 
          <el-form-item label="地图名称" prop="mapName">
            <el-input v-model="createForm.mapName"></el-input>
          </el-form-item>
          <el-form-item  label="选择楼层" prop="floorId">
            <el-select  v-model="createForm.floorId" placeholder="请选择">
-             <el-option v-for="floor in floorData" :key="floor.floorId" :label="floor.floorId" :value="floor.floorId"></el-option>
+             <el-option v-for="floor in floorData" :key="floor.floorId" :label="floor.floorName" :value="floor.floorId"></el-option>
            </el-select>
            <!-- <el-input v-else v-model="createForm.floorId"></el-input> -->
          </el-form-item>
-         <el-form-item label="上传地图" prop="upMap">
+         <el-form-item label="上传地图" prop="mapImgPath">
            <el-upload
+             ref="upload"
              class="avatar-uploader"
-             action="http://192.168.1.103:9000/map/picture"
+             action="http://192.168.1.146:9000/map/picture"
              :show-file-list="false"
+             :file-list="fileList"
              :on-success="handleAvatarSuccess"
              :before-upload="beforeAvatarUpload">
              <img v-if="imageUrl" :src="imageUrl" class="avatar">
@@ -38,24 +40,34 @@
        <el-table-column label = "操作">
          <template slot-scope="scope">
            <el-button size="small" @click="handleEdit(scope.$index,scope.row)" >修改</el-button>
-           <el-button size="small" @click="handChange" >编辑地图</el-button>
+           <el-button size="small" @click="handChange(scope.$index,scope.row)" >编辑地图</el-button>
            <el-button size="small" type="danger" @click="handleDel(scope.$index, scope.row)">删除</el-button>
          </template>
        </el-table-column>
      </el-table>
      <!--工具条-->
 		<el-col :span="24" class="toolbar">
-			<el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="1" :page-sizes="[10, 20, 30, 40]" :page-size='pageSize' layout="total, sizes, prev, pager, next, jumper" :total="total">
-    	</el-pagination>
+			<el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="1" :page-sizes="[10, 20, 30, 40]" :page-size='pageSize' layout="total, sizes, prev, pager, next, jumper" :total="total"></el-pagination>    
 		</el-col>
    </section>
 </template>
 <script>
-import { getMapPage, getFloorPage, addMap, removeMap, editMap } from "../../api/api";
+import {
+  getMapPage,
+  getFloorPage,
+  addMap,
+  removeMap,
+  editMap
+} from "../../api/api";
 export default {
   data() {
     return {
       createForm: {
+        mapName: "",
+        floorId: "",
+        mapImgPath: ""
+      },
+      newCreateForm: {
         mapName: "",
         floorId: "",
         mapImgPath: ""
@@ -71,14 +83,23 @@ export default {
       floorValue: "",
       imageUrl: "",
       rules: {
-        mapName: [{ required: true, message: "请输入名称", trigger: "blur" }]
-        // floorId: [{required: true,message:'请选择楼层',trigger: 'blur'}],
-        // upMap:[{required: true,message:'请上传地图', trigger: 'blur'}]
+        mapName: [{ required: true, message: "请输入名称", trigger: "blur" }],
+        floorId: [
+          {
+            type: "number",
+            required: true,
+            message: "请选择楼层",
+            trigger: "blur"
+          }
+        ],
+        mapImgPath: [
+          { required: true, message: "请上传地图", trigger: "change" }
+        ]
       },
-      page: 1,
       pageSize: 10,
       total: 0,
-      pageNum: 1
+      pageNum: 1,
+      fileList: []
     };
   },
 
@@ -87,17 +108,21 @@ export default {
       this.dialogFormVisible = true;
       this.dialogStatus = "create";
     },
+    close() {
+      this.dialogFormVisible = false;
+      this.$refs.upload.clearFiles();
+      this.fileList = [];
+      this.imageUrl = "";
+      this.createForm = Object.assign({}, this.newCreateForm);
+    },
     getMapData() {
       let para = {
-        page: this.page,
         pageNum: this.pageNum,
         pageSize: this.pageSize
       };
       getMapPage(para).then(res => {
-        this.pageNum = res.data.data.pageNum;
         this.maps = res.data.data.list;
         this.total = res.data.data.total;
-        // this.pageSize = res.data.data.pageSize;
       });
       getFloorPage().then(res => {
         this.floorData = res.data.data.list;
@@ -111,22 +136,30 @@ export default {
     },
     beforeAvatarUpload(file) {},
     resetForm(formName) {
-      this.$refs[formName].resetFields();
+      // this.$refs[formName].resetFields();
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.$refs.upload.clearFiles();
       this.dialogFormVisible = false;
+      this.imageUrl = "";
     },
     createData(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           let para = Object.assign({}, this.createForm);
           addMap(para).then(res => {
-            this.$message({
-              message: "提交成功",
-              type: "success"
-            });
-            this.$refs["createForm"].resetFields();
-            this.dialogFormVisible = false;
-            this.getMapData();
-            console.log(para);
+            if (res.data.code == 30002) {
+              this.$confirm("楼层重复");
+            } else {
+              this.$message({
+                message: "提交成功",
+                type: "success"
+              });
+              this.$refs["createForm"].resetFields();
+              this.$refs.upload.clearFiles();
+              this.dialogFormVisible = false;
+              this.imageUrl = "";
+              this.getMapData();
+            }
           });
         } else {
           console.log("error submit!!");
@@ -152,22 +185,28 @@ export default {
       this.dialogFormVisible = true;
       this.dialogStatus = "edit";
       this.createForm = Object.assign({}, row);
+      this.imageUrl = row.mapImgPath;
     },
     updateData(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           this.$refs.createForm.validate(valid => {
-            this.$confirm("确认提交吗？", "提示", {}).then(() => {
+            // this.$confirm("确认提交吗？", "提示", {}).then(() => {
               let para = Object.assign({}, this.createForm);
               editMap(para).then(res => {
-                this.$message({
-                  message: "提交成功",
-                  type: "success"
-                });
-                this.$refs["createForm"].resetFields();
-                this.dialogFormVisible = false;
-                this.getMapData();
-              });
+                if (res.data.code == 30002) {
+                  this.$confirm("楼层重复");
+                } else {
+                  this.$message({
+                    message: "提交成功",
+                    type: "success"
+                  });
+                  this.$refs["createForm"].resetFields();
+                  this.dialogFormVisible = false;
+                  this.imageUrl = "";
+                  this.getMapData();
+                }
+              // });
             });
           });
         } else {
@@ -177,17 +216,15 @@ export default {
       });
     },
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
       this.pageSize = parseInt(val);
       this.getMapData();
     },
     handleCurrentChange(val) {
-      console.log(val);
       this.pageNum = parseInt(val);
       this.getMapData();
     },
-    handChange(){
-      window.open('http://www.baidu.com','_blank');
+    handChange(index,row) {
+      window.open("/world-project/nav.html?floor=" + row.floorId, "_blank");
     }
   },
   mounted() {

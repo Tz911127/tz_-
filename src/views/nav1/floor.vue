@@ -1,20 +1,29 @@
 <template>
 	<section>
 		<el-button type="text" @click="open">添加楼层</el-button>
-		<el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
+		<el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
 			<el-form :model="createForm" label-width="100px" :rules="editFormRules" ref="createForm" style="width:300px">
-				<el-form-item  prop="floorName"  label="楼层" required>
+				<el-form-item  prop="floorNumber"  label="楼层">
+					<el-input v-model="createForm.floorNumber"  placeholder="例：F1" >
+             <template slot-scope="scope">
+               {{createForm.floorNumber | capitalize }}
+             </template>
+          </el-input>
+           <!-- {{createForm.floorNumber | capitalize }} -->
+				</el-form-item>
+        <el-form-item  prop="floorName"  label="楼层名称">
+          <!--  style="text-transform: uppercase" -->
 					<el-input v-model="createForm.floorName" placeholder="例：01"></el-input>
 				</el-form-item>
-				<el-form-item  prop="floorNumber"  label="楼层名称" required>
-					<el-input v-model="createForm.floorNumber" placeholder="例：F1"></el-input>
-				</el-form-item>
+        <el-form-item>
+          <template slot-scope="scope">
+            <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">添加</el-button>
+            <el-button v-else type="primary" @click="updateData('createForm')">修改</el-button>
+            <el-button @click.native="resetForm('createForm')">取消</el-button>
+          </template>
+        </el-form-item>
 			</el-form>
 			<div slot="footer" class="dialog-footer">
-			 <!-- <el-button @click.native="resetForm('createForm')">取消</el-button> -->
-			 <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">添加</el-button>
-        <el-button v-else type="primary" @click="updateData('createForm')">修改</el-button>
-        <el-button @click.native="resetForm('createForm')">取消</el-button>
 			</div>
 		</el-dialog>
 		<!-- 列表 -->
@@ -38,17 +47,15 @@
 	</section>
 </template>
 <script>
-import {
-  getFloorPage,
-  removeFloor,
-  addFloor,
-  editFloor
-} from "../../api/api";
+import { getFloorPage, removeFloor, addFloor, editFloor } from "../../api/api";
 export default {
   data() {
     return {
       createForm: {
-        id: "0",
+        floorName: "",
+        floorNumber: ""
+      },
+      newCreateForm: {
         floorName: "",
         floorNumber: ""
       },
@@ -67,8 +74,10 @@ export default {
         name: ""
       },
       editFormRules: {
-        name: [{ required: true, message: "请输入楼层", trigger: "blur" }],
-        code: [{ required: true, message: "请输入楼层名称", trigger: "blur" }]
+        floorName: [{ required: true, message: "请输入楼层", trigger: "blur" }],
+        floorNumber: [
+          { required: true, message: "请输入楼层名称", trigger: "blur" }
+        ]
       }
     };
   },
@@ -76,6 +85,10 @@ export default {
     open() {
       this.dialogFormVisible = true;
       this.dialogStatus = "create";
+    },
+    close() {
+      this.dialogFormVisible = false;
+      this.createForm = Object.assign({}, this.newCreateForm);
     },
     getFloors() {
       let para = {
@@ -87,26 +100,29 @@ export default {
       getFloorPage(para).then(res => {
         this.floors = res.data.data.list;
         this.total = res.data.data.total;
-        this.pageSize = res.data.data.pageSize;
-        this.pageNum = res.data.data.pageNum;
       });
     },
     createData(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           // this.$confirm("确认提交吗？", "提示", {}).then(() => {
-          this.createForm.id = parseInt(Math.random() * 100).toString();
           let para = Object.assign({}, this.createForm);
           addFloor(para).then(res => {
-            this.$message({
-              message: "提交成功",
-              type: "success"
-            });
-            this.$refs["createForm"].resetFields();
-            this.dialogFormVisible = false;
-            this.getFloors();
-            console.log(para);
-            // });
+            if (res.data.code == 30002) {
+              if (res.data.data.indexOf("name") != -1) {
+                this.$confirm("楼层名称重复");
+              } else {
+                this.$confirm("楼层重复");
+              }
+            } else {
+              this.$message({
+                message: "提交成功",
+                type: "success"
+              });
+              this.$refs["createForm"].resetFields();
+              this.dialogFormVisible = false;
+              this.getFloors();
+            }
           });
         } else {
           console.log("error submit!!");
@@ -115,7 +131,10 @@ export default {
       });
     },
 
-    handleSizeChange() {},
+    handleSizeChange(val) {
+      this.pageSize = parseInt(val);
+      this.getFloors();
+    },
     handleCurrentChange(val) {
       this.pageNum = parseInt(val);
       this.getFloors();
@@ -125,13 +144,16 @@ export default {
         type: "warning"
       }).then(() => {
         let para = { id: row.floorId };
-        console.log(para);
         removeFloor(para).then(res => {
-          this.$message({
-            message: "删除成功",
-            type: "success"
-          });
-          this.getFloors();
+          if (res.data.code == 30002) {
+            this.$confirm("楼层数据已经被使用，无法删除");
+          } else {
+            this.$message({
+              message: "删除成功",
+              type: "success"
+            });
+            this.getFloors();
+          }
         });
       });
     },
@@ -144,9 +166,16 @@ export default {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           this.$refs.createForm.validate(valid => {
-            this.$confirm("确认提交吗？", "提示", {}).then(() => {
-              let para = Object.assign({}, this.createForm);
-              editFloor(para).then(res => {
+            // this.$confirm("确认提交吗？", "提示", {}).then(() => {
+            let para = Object.assign({}, this.createForm);
+            editFloor(para).then(res => {
+              if (res.data.code == 30002) {
+                if (res.data.data.indexOf("name") != -1) {
+                  this.$confirm("楼层名称重复");
+                } else {
+                  this.$confirm("楼层重复");
+                }
+              } else {
                 this.$message({
                   message: "提交成功",
                   type: "success"
@@ -154,7 +183,8 @@ export default {
                 this.$refs["createForm"].resetFields();
                 this.dialogFormVisible = false;
                 this.getFloors();
-              });
+              }
+              // });
             });
           });
         } else {
@@ -163,14 +193,21 @@ export default {
         }
       });
     },
-     resetForm(createForm) {
+    resetForm(createForm) {
       this.dialogFormVisible = false;
-      this.$refs[createForm].resetFields();
-    },
+      this.createForm = Object.assign({}, this.newCreateForm);
+    }
+  },
+  filters: {
+    capitalize: function(value) {
+      if (!value) return "";
+      value = value.toString();
+      return value.charAt(0).toUpperCase() + value.slice(1);
+      console.log(value);
+    }
   },
   mounted() {
     this.getFloors();
-    console.log(this.$store.getters.token);
   }
 };
 </script>

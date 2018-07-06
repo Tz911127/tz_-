@@ -1,15 +1,23 @@
-export const base = (process.env.NODE_ENV === 'development' ? "/api" : "");
-// import store from "@/vuex/store.js"
-import axios from "axios"
-axios.defaults.timeout = 10000
-axios.defaults.baseURL = process.env.BASE_API
-
-axios.interceptors.request.use(config => {
-    const token =JSON.parse( window.localStorage.getItem("token"))
-    if (token) {
-        config.headers['X-Token'] =token
+export function formatDate(date, fmt) {
+    if (/(y+)/.test(fmt)) {
+        fmt = fmt.replace(RegExp.$1, (date.getFullYear() + '').substr(4 - RegExp.$1.length));
     }
-    return config
-}, error => {
-    Promise.reject(error)
-})
+    let o = {
+        'M+': date.getMonth() + 1,
+        'd+': date.getDate(),
+        'h+': date.getHours(),
+        'm+': date.getMinutes(),
+        's+': date.getSeconds()
+    };
+    for (let k in o) {
+        if (new RegExp(`(${k})`).test(fmt)) {
+            let str = o[k] + '';
+            fmt = fmt.replace(RegExp.$1, (RegExp.$1.length === 1) ? str : padLeftZero(str));
+        }
+    }
+    return fmt;
+};
+
+function padLeftZero(str) {
+    return ('00' + str).substr(str.length);
+};

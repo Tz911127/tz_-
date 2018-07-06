@@ -4,7 +4,7 @@
 
 	  <el-form :inline = true :model = 'filters'>
 		  <el-form-item>
-		  	<el-select v-model="filters.name" clearable placeholder="请选择" @change='getScreen'>
+		  	<el-select v-model="filters.type" clearable placeholder="素材类型" @change='getScreen'>
     			<el-option
       				v-for="item in options"
       				:key="item.value"
@@ -13,40 +13,34 @@
 					  >
       			</el-option>
   			</el-select>
-				<el-form-item>
-					<el-input v-model="filters.name" placeholder="商铺名称"></el-input>
-			  </el-form-item>
-			  <el-form-item>
+        </el-form-item>
+         <el-form-item style="float:right">
 				  <el-button type="primary" @click="getScreen">查询</el-button>
 			  </el-form-item>
-	  	</el-form-item>
+				<el-form-item style="float:right">
+					<el-input v-model="filters.name" placeholder="素材名称"></el-input>
+			  </el-form-item>
+			 
+	  	
 	  </el-form>
 	  
     
-    <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
+    <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
       <!-- :show-file-list = false -->
       <el-form :model="createForm" ref="createForm">
+        <el-form-item>
           <el-upload
-        class="upload-demo"
-        style="display:inline-block"
-        action="http://192.168.1.103:9000/screensaverMaterial/picture"
-        :on-success="handleChange"
-        :file-list="fileList"
-        :show-file-list = false
-        multiple>
+          ref='upload' 
+          class="upload-demo"
+          style="display:inline-block"
+          action="http://192.168.1.146:9000/screensaverMaterial/picture"
+          :on-success="handleChange"
+          :file-list="fileList"
+          :show-file-list = false
+          multiple>
         <el-button size="small" type="primary">点击上传</el-button>
-        
-        <!-- <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div> -->
       </el-upload>
-      <el-select v-model="operation" clearable placeholder="请选择" @change='getScreen'>
-    			<el-option
-      				v-for="item in items"
-      				:key="item.value"
-      				:label="item.label"
-      				:value="item.value"
-					  >
-      			</el-option>
-  			</el-select>
+        </el-form-item>
       <el-form-item>
         <el-table :data = 'imgData' highlight-current-row style="100%">
           <el-table-column prop="fileOriginName" label="文件名称" sortable width="200px"></el-table-column>
@@ -62,7 +56,7 @@
 
       <el-form-item >
             <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">确定</el-button>
-			      <el-button @click.native="dialogFormVisible=false">取消</el-button>
+			      <el-button @click.native="resetForm('createForm')">取消</el-button>
         </el-form-item>
       </el-form>
       
@@ -71,25 +65,26 @@
 		<el-table :data = 'activeMaterials' highlight-current-row style="100%">
 			<el-table-column prop="logo" label="素材" width="200px" >
 				<template slot-scope="scope">
-					<img :src="scope.row.screensaverMaterialImgPath" @click="select(scope.$index, scope.row)" width="40" height="40" class="head_pic"/>
+					<img :src="scope.row.screensaverMaterialImgPath" @click="select(scope.$index, scope.row)" width="40" height="40" style="cursor:pointer" class="head_pic"/>
           <el-dialog :visible.sync="dialogVisible">
-            <img width="100%" :src="ImgPath">
+            <img width="600px" height="400px" :src="ImgPath">
           </el-dialog>
 				</template>
 			</el-table-column>
 			<el-table-column prop="screensaverMaterialName" label="素材名称" width="200px" sortable></el-table-column>
-      <el-table-column prop="screensaverMaterialType" label="素材类型" width="200px" sortable></el-table-column>
+      <el-table-column prop="screensaverMaterialType" label="素材类型" width="200px" sortable>
+        <template slot-scope="scope">
+                {{scope.row.screensaverMaterialType | filterType}}
+              </template>
+      </el-table-column>
 			<el-table-column label="操作" min-width="300px">
 				<template slot-scope="scope">
 					<el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
             <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogEditVisible">
                 <el-form :model="createForm" label-width="100px" class="demo-ruleForm" >
-                  <el-form-item label="活动名称" prop="screensaverMaterialName">
+                  <el-form-item label="素材名称" prop="screensaverMaterialName">
                     <el-input v-model="createForm.screensaverMaterialName"></el-input>
                   </el-form-item> 
-                  <el-form-item label="活动类型" prop="screensaverMaterialType">
-                    <el-tag>{{createForm.screensaverMaterialType}}</el-tag>
-                  </el-form-item>
                   <el-form-item >
                       <el-button  type="primary" @click="updateData('createForm')">确定</el-button>
 			                <el-button @click.native="dialogEditVisible=false">取消</el-button>
@@ -122,22 +117,18 @@ export default {
       dialogEditVisible: false,
       dialogStatus: "",
       textMap: {
-        updata: "edit",
+        updata: "修改素材",
         create: "上传素材"
       },
       activeMaterials: [],
       options: [
         {
-          value: "A",
-          label: "素材类型"
+          label: "横屏",
+          value: "2"
         },
         {
-          value: "B",
-          label: "商城活动"
-        },
-        {
-          value: "C",
-          label: "品牌活动"
+          label: "竖屏",
+          value: "1"
         }
       ],
       items: [],
@@ -155,34 +146,40 @@ export default {
       dialogVisible: false,
       imgData: [],
       screensArr: [],
-      showImg:false,
-      ImgPath:''
+      showImg: false,
+      ImgPath: ""
     };
   },
   methods: {
     open() {
       (this.dialogFormVisible = true), (this.dialogStatus = "create");
     },
+    close() {
+      this.imgData = [];
+      this.$refs.upload.clearFiles();
+      this.dialogFormVisible = false;
+    },
     getScreen() {
       let para = {
         page: this.page,
-        type: this.filters.type,
-        name: this.filters.name,
         pageNum: this.pageNum,
-        pageSize: this.pageSize
+        pageSize: this.pageSize,
+        screensaverMaterialType: this.filters.type,
+        screensaverMaterialName: this.filters.name
       };
       getScreenPage(para).then(res => {
         this.activeMaterials = res.data.data.list;
         this.total = res.data.data.total;
-        this.pageSize = res.data.data.pageSize;
-        this.pageNum = res.data.data.pageNum;
       });
     },
     handleCurrentChange(val) {
       this.pageNum = parseInt(val);
       this.getScreen();
     },
-    handleSizeChange() {},
+    handleSizeChange(val) {
+      this.pageSize = parseInt(val);
+      this.getScreen();
+    },
     handleDel(index, row) {
       this.$confirm("确定要删除吗？", "提示", {
         type: "warning"
@@ -203,42 +200,48 @@ export default {
       this.createForm = Object.assign({}, row);
     },
     handleChange(response, file, fileList) {
-      console.log(response.data);
       this.imgData.push(response.data);
-      console.log(this.imgData);
     },
     createData(createForm) {
-      console.log(this.imgData);
-      this.$refs[createForm].validate(valid => {
-        if (valid) {
-          // this.$confirm("确认提交吗？", "提示", {}).then(() => {
+      if (this.imgData.length == 0) {
+        this.$confirm(`请上传图片`);
+      } else {
+        this.$refs[createForm].validate(valid => {
+          if (valid) {
+            // this.$confirm("确认提交吗？", "提示", {}).then(() => {
 
-          for (let i = 0; i < this.imgData.length; i++) {
-            console.log(this.imgData[i].fileNewName);
-            let screens = {};
-            screens.screensaverMaterialImgName = this.imgData[i].fileNewName;
-            screens.screensaverMaterialImgPath = this.imgData[i].filePath;
-            screens.screensaverMaterialName = this.imgData[i].fileOriginName;
-            screens.screensaverMaterialSize = this.imgData[i].fileSize;
-            screens.screensaverMaterialType = this.imgData[i].imageOrientation;
-            this.screensArr.push(screens);
-          }
-          let para = Object.assign([], this.screensArr);
-          addScreenMaterial(para).then(res => {
-            this.$message({
-              message: "提交成功",
-              type: "success"
+            for (let i = 0; i < this.imgData.length; i++) {
+              // console.log(this.imgData[i].fileNewName);
+              let screens = {};
+              screens.screensaverMaterialImgName = this.imgData[i].fileNewName;
+              screens.screensaverMaterialImgPath = this.imgData[i].filePath;
+              screens.screensaverMaterialName = this.imgData[i].fileOriginName;
+              screens.screensaverMaterialSize = this.imgData[i].fileSize;
+              screens.screensaverMaterialType = this.imgData[
+                i
+              ].imageOrientation;
+              this.screensArr.push(screens);
+            }
+            let para = Object.assign([], this.screensArr);
+            addScreenMaterial(para).then(res => {
+              this.$message({
+                message: "提交成功",
+                type: "success"
+              });
+              this.$refs["createForm"].resetFields();
+              this.imgData = [];
+              this.screensArr = [];
+              this.$refs.upload.clearFiles();
+              this.dialogFormVisible = false;
+              this.getScreen();
             });
-            this.$refs["createForm"].resetFields();
-            this.dialogFormVisible = false;
-            this.getScreen();
-          });
-          // });
-        } else {
-          console.log("error submit!!");
-          return false;
-        }
-      });
+            // });
+          } else {
+            console.log("error submit!!");
+            return false;
+          }
+        });
+      }
     },
     updateData(createForm) {
       let para = Object.assign({}, this.createForm);
@@ -254,15 +257,32 @@ export default {
     },
     deleteRow(index, rows) {
       rows.splice(index, 1);
+      // this.$refs.upload.clearFiles();
     },
-    select(index,row) {
-      console.log(row.screensaverMaterialImgPath)
+    select(index, row) {
+      console.log(row.screensaverMaterialImgPath);
       this.ImgPath = row.screensaverMaterialImgPath;
       this.dialogVisible = true;
     },
+    resetForm(createForm) {
+      this.imgData = [];
+      this.$refs.upload.clearFiles();
+      this.dialogFormVisible = false;
+      //  this.createForm = Object.assign({},this.newCreateForm)
+    }
+  },
+  filters: {
+    filterType(data) {
+      if (Number(data) == 1) {
+        return "竖屏";
+      } else {
+        return "横屏";
+      }
+    }
   },
   mounted() {
     this.getScreen();
-  }
+  },
+  
 };
 </script>

@@ -4,17 +4,12 @@
 			<el-col :span="10" class="logo" :class="collapsed?'logo-collapse-width':'logo-width'">
 				<img :src="this.sysLogo" />
 			</el-col>
-			<el-col :span="10">
+			<el-col :span="4">
 				<div class="tools" @click.prevent="collapse">
-					<!-- <i class="fa fa-align-justify"></i> -->
 				</div>
 			</el-col>
-			<el-col :span="4" class="userinfo">
-				<!-- <el-dropdown trigger="hover">
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item divided @click.native="logout">退出登录</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown> -->
+			<el-col :span="10" class="userinfo">
+        <el-button type="primary" @click="open">参数设置</el-button>
         <el-button type="primary" @click.native="logout">退出登录</el-button>
 			</el-col>
 		</el-col>
@@ -66,11 +61,48 @@
 				</div>
 			</section>
 		</el-col>
+    <el-dialog title= "参数设置" :visible.sync="dialogFormVisible">
+      <el-form :model="createForm" ref="createForm" :rules="rules" style="100%" label-width="120px">
+        <el-form-item label="开关机时间" prop="on_off">
+          <el-input v-model="createForm.on_off" ></el-input>
+            <!-- <el-time-select
+              v-model="createForm.on_off"
+              :picker-options="{
+                start: '00:00',
+                step: '00:30',
+                end: '24:00'
+              }"
+              placeholder="选择时间">
+            </el-time-select> -->
+            <!-- <el-time-picker
+              is-range
+              v-model="createForm.on_off"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              placeholder="选择时间范围">
+            </el-time-picker> -->
+
+
+        </el-form-item>
+        <el-form-item label="轮播间隔时间(s)" prop="delay">
+          <el-input v-model="createForm.delay"></el-input>
+        </el-form-item>
+        <el-form-item label="屏保时长(s)" prop="protect">
+          <el-input v-model="createForm.protect"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="createData('createForm')">确认</el-button>
+          <el-button @click.native="resetForm('createForm')">取消</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
 	</el-row>
 </template>
 
 <script>
 import logo from "../assets/logo.png";
+import { config, getConfig, loginOut } from "../api/api";
 export default {
   data() {
     return {
@@ -88,17 +120,41 @@ export default {
         type: [],
         resource: "",
         desc: ""
+      },
+      dialogFormVisible: false,
+      createForm: {
+        on_off: "",
+        delay: 0,
+        protect: 0
+      },
+      startTime: "",
+      endTime: "",
+      rules: {
+        on_off: [
+          {
+            // type: "date",
+            required: true,
+            message: "请输入开关机时间",
+            trigger: "change"
+          }
+        ],
+        delay: [
+          { required: true, message: "请输入轮播间隔时间", trigger: "blur" }
+        ],
+        protect: [
+          { required: true, message: "请输入屏保时长", trigger: "blur" }
+        ],
       }
     };
   },
   created() {
-    // this.isTimeout();
+    this.isTimeout();
   },
   methods: {
     isTimeout() {
       setTimeout(() => {
         this.$router.push("/login");
-      }, 10 * 60 * 1000);
+      }, 120 * 60 * 1000);
     },
     onSubmit() {
       console.log("submit!");
@@ -117,7 +173,11 @@ export default {
         //type: 'warning'
       })
         .then(() => {
-          sessionStorage.removeItem("user");
+          // sessionStorage.removeItem("user");
+          let para = window.localStorage.getItem('token');
+          loginOut(para).then(res => {
+            _this.$router.push("/login");
+          });
           _this.$router.push("/login");
         })
         .catch(() => {});
@@ -130,6 +190,36 @@ export default {
       this.$refs.menuCollapsed.getElementsByClassName(
         "submenu-hook-" + i
       )[0].style.display = status ? "block" : "none";
+    },
+    open() {
+      this.dialogFormVisible = true;
+      this.getfig();
+    },
+    createData(createForm) {
+      // console.log(this.value4);
+      this.$refs[createForm].validate(valid => {
+        if (valid) {
+          let para = Object.assign({}, this.createForm);
+          console.log(para);
+          config(para).then(res => {
+            this.dialogFormVisible = false;
+            this.$refs[createForm].resetFields();
+          });
+        } else {
+          console.log("error submit!!");
+          return false;
+        }
+      });
+    },
+    resetForm(createForm) {
+      this.dialogFormVisible = false;
+      this.$refs[createForm].resetFields();
+    },
+    getfig() {
+      getConfig().then(res => {
+        console.log(res.data.data);
+        this.createForm = res.data.data;
+      });
     }
   },
   mounted() {
@@ -140,7 +230,6 @@ export default {
       this.sysUserName = user.name || "";
       this.sysUserAvatar = user.avatar || "";
     }
-  
   }
 };
 </script>
@@ -184,9 +273,10 @@ export default {
       border-right-width: 1px;
       border-right-style: solid;
       img {
-        width: 120px;
-        float: left;
-        margin: 10px 10px 10px 18px;
+        width: 80%;
+        // float: left;
+        // margin: 10px 10px 10px 18px;
+        transform: scale(1) !important;
       }
       .txt {
         color: #fff;

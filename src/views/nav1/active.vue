@@ -1,16 +1,16 @@
 <template>
 	<section>
 		<el-button type="text" @click="open">添加活动</el-button>
-		<el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
+		<el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
 			<el-form :model="createForm" label-width="80px" :rules="editFormRules" ref="createForm" style="width:300px">
 				<el-form-item prop = 'activityType' label="活动类型" >
 					<el-input v-model="createForm.activityType" placeholder="例：品牌活动"></el-input>
 				</el-form-item>
-				<el-form-item  prop = 'logo' label="活动LOGO">
+				<el-form-item  prop = 'activityLogo' label="活动LOGO">
 					<el-upload  
              ref="upload"
              class="avatar-uploader"
-             action='http://192.168.1.103:9000/activity/logo'
+             action='http://192.168.1.146:9000/activity/logo'
              :show-file-list="false"
              :on-success="handleAvatarSuccess"
              :before-upload="beforeAvatarUpload">
@@ -18,12 +18,14 @@
              <i v-else class="el-icon-plus avatar-uploader-icon"></i>
             </el-upload>
 				</el-form-item>
+        <el-form-item>
+          <template slot-scope="scope">   
+			      <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">添加</el-button>
+            <el-button v-else type="primary" @click="updateData('createForm')">修改</el-button>
+            <el-button @click.native = "resetForm('createForm')" >取消</el-button>
+          </template>
+        </el-form-item>
 			</el-form>
-			<div slot="footer" class="dialog-footer">
-			 <el-button @click.native = "resetForm('createForm')" >取消</el-button>
-			 <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">添加啊</el-button>
-        <el-button v-else type="primary" @click="updateData('createForm')">修改啊</el-button>
-			</div>
 		</el-dialog>
 		<!-- 列表 -->
 		<el-table :data = 'actives' highlight-current-row style="100%">
@@ -55,15 +57,20 @@ import {
   addActive,
   editActive
 } from "../../api/api";
-import { base }from "@/utils/common.js"
 export default {
   data() {
     return {
-      base: base,
       createForm: {
-        id: "0",
-        activityType: "",
-        // logo: ""
+        activityLogo: "",
+        activityLogoSize: null,
+        activityNumber: null,
+        activityType: ""
+      },
+      newCreateForm: {
+        activityLogo: "",
+        activityLogoSize: null,
+        activityNumber: null,
+        activityType: ""
       },
       dialogFormVisible: false,
       dialogStatus: "",
@@ -75,15 +82,20 @@ export default {
       total: 0,
       page: 1,
       pageNum: 1,
-      pageSize:10,
+      pageSize: 10,
       filters: {
         type: ""
       },
       imageUrl: "",
       editFormRules: {
-        activityType: [{ required: true, message: "请输入商铺名称", trigger: "blur" }]
+        activityType: [
+          { required: true, message: "请输入活动类型", trigger: "blur" }
+        ],
+        activityLogo: [
+          { required: true, message: "请上传图片", trigger: "change" }
+        ]
       },
-      // token:''
+      fileList: []
     };
   },
   methods: {
@@ -91,41 +103,40 @@ export default {
       this.dialogFormVisible = true;
       this.dialogStatus = "create";
     },
+    close() {
+      this.dialogFormVisible = false;
+      this.$refs.upload.clearFiles();
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.imageUrl = "";
+    },
     getActives() {
-      
       let para = {
-        token:this.token,
+        token: this.token,
         page: this.page,
         type: this.filters.type,
         pageNum: this.pageNum,
-        pageSize: this.pageSize,
+        pageSize: this.pageSize
       };
       getActivePage(para).then(res => {
-        this.pageNum = res.data.data.pageNum;
         this.actives = res.data.data.list;
         this.total = res.data.data.total;
-        this.pageSize = res.data.data.pageSize;
-        console.log(res.data.data)
       });
-
     },
     createData(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
-          this.createForm.id = parseInt(Math.random() * 100).toString();
-            let para = Object.assign({}, this.createForm);
-            addActive(para).then(res => {
-              this.$message({
-                message: "提交成功",
-                type: "success"
-              });
-              this.$refs["createForm"].resetFields();
-              this.$refs["upload"].clearFiles();
-              this.dialogFormVisible = false;
-              this.getActives();
-              console.log(para);
+          let para = Object.assign({}, this.createForm);
+          addActive(para).then(res => {
+            this.$message({
+              message: "提交成功",
+              type: "success"
             });
-          
+            this.createForm = Object.assign({}, this.newCreateForm);
+            this.$refs.upload.clearFiles();
+            this.imageUrl = "";
+            this.dialogFormVisible = false;
+            this.getActives();
+          });
         } else {
           console.log("error submit!!");
           return false;
@@ -136,18 +147,20 @@ export default {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           this.$refs.createForm.validate(valid => {
-            this.$confirm("确定提交？", "提示", {}).then(() => {
+            // this.$confirm("确定提交？", "提示", {}).then(() => {
               let para = Object.assign({}, this.createForm);
               editActive(para).then(res => {
                 this.$message({
                   message: "提交成功",
                   type: "success"
                 });
-                this.$refs["createForm"].resetFields();
+                // this.$refs["createForm"].resetFields();
+                this.createForm = Object.assign({}, this.newCreateForm);
+                this.imageUrl = "";
                 this.dialogFormVisible = false;
                 this.getActives();
               });
-            });
+            // });
           });
         } else {
           console.log("error submit!!");
@@ -155,15 +168,19 @@ export default {
         }
       });
     },
-    resetForm(createForm){
-      this.dialogFormVisible=false;
-      this.$refs.upload.clearFiles(); 
-      this.$refs[createForm].resetFields();
+    resetForm(createForm) {
+      this.dialogFormVisible = false;
+      // this.$refs.upload.clearFiles();
+      // this.$refs[createForm].resetFields();
+      this.imageUrl = "";
+      this.createForm = Object.assign({}, this.newCreateForm);
     },
     handleEdit(index, row) {
       this.dialogFormVisible = true;
       this.dialogStatus = "edit";
       this.createForm = Object.assign({}, row);
+      console.log(row.activityLogo);
+      this.imageUrl = row.activityLogo;
     },
     handleDel(index, row) {
       this.$confirm("确定要删除吗？", "提示", {
@@ -171,19 +188,26 @@ export default {
       }).then(() => {
         let para = { id: row.activityId };
         removeActive(para).then(res => {
-          this.$message({
-            message: "删除成功",
-            type: "success"
-          });
-          this.getActives();
+          if (res.data.code == 30002) {
+            this.$confirm(res.data.data);
+            // alert(res.data.data);
+          } else {
+            this.$message({
+              message: "删除成功",
+              type: "success"
+            });
+            this.getActives();
+          }
         });
       });
     },
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
+      this.pageSize = parseInt(val);
+      this.getActives();
     },
+
     handleCurrentChange(val) {
-      this.pageNum = val;
+      this.pageNum = parseInt(val);
       this.getActives();
     },
     handleAvatarSuccess(res, file) {
@@ -193,7 +217,6 @@ export default {
     beforeAvatarUpload(file) {
       // const isJPG = file.type === "image/jpeg";
       // const isLt2M = file.size / 1024 / 1024 < 2;
-
       // if (!isJPG) {
       //   this.$message.error("上传头像图片只能是 JPG 格式!");
       // }
@@ -205,7 +228,6 @@ export default {
   },
   mounted() {
     this.getActives();
-    
   }
 };
 </script>
@@ -223,8 +245,8 @@ export default {
 .avatar-uploader-icon {
   font-size: 28px;
   color: #8c939d;
-  width: 178px;
-  height: 178px;
+  /* width: 178px;
+  height: 178px; */
   line-height: 178px;
   text-align: center;
 }

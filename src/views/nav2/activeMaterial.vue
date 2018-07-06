@@ -3,30 +3,33 @@
 	  <el-button type='text' @click="open">上传素材</el-button>
 
 	  <el-form :inline = true :model = 'filters'>
-		  <el-form-item>
-		  	<el-select v-model="filters.name" clearable placeholder="请选择" @change='getScreen'>
+		  <!-- <el-form-item>
+		  	<el-select v-model="filters.name" placeholder="请选择" @change='getScreen'>
     			<el-option
-      				v-for="item in options"
-      				:key="item.value"
-      				:label="item.label"
-      				:value="item.value"
+      				v-for="item in activeMaterials"
+      				:key="item.activityId"
+      				:label="item.activityType"
+      				:value="item.activityId"
 					  >
       			</el-option>
   			</el-select>
-				<el-form-item>
-					<el-input v-model="filters.name" placeholder="商铺名称"></el-input>
-			  </el-form-item>
-			  <el-form-item>
+        </el-form-item> -->
+        <el-form-item style="float:right">
 				  <el-button type="primary" @click="getScreen">查询</el-button>
 			  </el-form-item>
-	  	</el-form-item>
+				<el-form-item style="float:right">
+					<el-input v-model="filters.name" placeholder="素材名称"></el-input>
+			  </el-form-item>
+			  
+	  	
 	  </el-form>
 	  
     
-    <el-dialog  :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
-      <el-form :model = 'createForm'  ref="createForm">
-        <el-form-item>
-            <el-select v-model="operation" clearable placeholder="请选择" @change="selectId">
+    <el-dialog  :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" :before-close="close">
+      <!-- :rules="createForm" -->
+      <el-form :model = 'createForm'  ref="createForm" >
+        <el-form-item prop="activityId">
+            <el-select v-model="createForm.activityId" placeholder="请选择活动" @change="selectId" clearable class="activity">
     			    <el-option
       				v-for="item in items"
       				:key="item.activityId"
@@ -38,13 +41,15 @@
         </el-form-item>
         <el-form-item>
             <el-upload
+                ref="upload"
                 class="upload-demo"
                 style="display:inline-block"
-                action="http://192.168.1.103:9000/activityMaterial/picture"
+                action="http://192.168.1.146:9000/activityMaterial/picture"
                 :on-success="handlePictureCardPreview"
                 :file-list="fileList"
                 :show-file-list = false
                 :on-remove="handleRemove"
+                :before-upload="beforeAvatarUpload"
                 multiple>
                 <el-button size="small" type="primary">点击上传</el-button>
                 <!-- <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过500kb</div> -->
@@ -65,7 +70,7 @@
         </el-form-item> 
         <el-form-item >
             <el-button type="primary" @click="createData('createForm')">确定</el-button>
-            <el-button @click.native="dialogFormVisible=false">取消</el-button>
+            <el-button @click.native="resetCreateForm('createForm')">取消</el-button>
         </el-form-item>
       </el-form>
     </el-dialog>
@@ -73,7 +78,7 @@
 		<el-table :data = 'activeMaterials' highlight-current-row style="100%">
 			<el-table-column prop="logo" label="素材" width="200px">
 				<template slot-scope="scope"   >
-					<img :src="scope.row.activityMaterialImgPath" @click="select(scope.$index, scope.row)"  width="40" height="40" class="head_pic"/>
+					<img :src="scope.row.activityMaterialImgPath" @click="select(scope.$index, scope.row)" style="cursor:pointer"  width="40" height="40" class="head_pic"/>
           <el-dialog :visible.sync="dialogVisible">
             <img width="100%" :src="imgPath" alt="">
           </el-dialog>
@@ -86,15 +91,23 @@
 					<el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
           <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogEditVisible">
                 <el-form :model="createForm" label-width="100px" class="demo-ruleForm" >
-                  <el-form-item label="活动名称" prop="activityMaterialName">
+                  <el-form-item label="素材名称" prop="activityMaterialName">
                     <el-input v-model="createForm.activityMaterialName"></el-input>
                   </el-form-item> 
-                  <el-form-item label="活动类型" prop="activityType">
-                    <el-tag>{{createForm.activityType}}</el-tag>
+                  <el-form-item label="素材类型" prop="activityType">
+                    <el-select v-model="createForm.activityId" placeholder="请选择活动" @change="selectId">
+    		            	    <el-option
+      	            			v-for="item in items"
+      	            			:key="item.activityId"
+      	            			:label="item.activityType"
+      	            			:value="item.activityId"
+				            	    >
+      	            		</el-option>
+  			            </el-select>
                   </el-form-item>
                   <el-form-item >
                       <el-button  type="primary" @click="updateData('createForm')">确定</el-button>
-			                <el-button @click.native="dialogEditVisible=false">取消</el-button>
+			                <el-button @click.native="resetForm('createForm')">取消</el-button>
                   </el-form-item>
                 </el-form>
             </el-dialog>
@@ -120,30 +133,22 @@ import {
 export default {
   data() {
     return {
-      createForm: {},
+      createForm: {
+        // activityId: ""
+      },
+      newCreateForm: {
+        // activityId: ""
+      },
       fileDatas: [],
       dialogFormVisible: false,
-      dialogEditVisible:false,
+      dialogEditVisible: false,
       dialogStatus: "",
       textMap: {
         updata: "编辑",
         create: "上传素材"
       },
       activeMaterials: [],
-      options: [
-        {
-          value: "A",
-          label: "素材类型"
-        },
-        {
-          value: "B",
-          label: "商城活动"
-        },
-        {
-          value: "C",
-          label: "品牌活动"
-        }
-      ],
+      options: [],
       items: [],
       operation: "",
       value: "",
@@ -162,32 +167,36 @@ export default {
       imgData: [],
       activeArr: [],
       activityId: 0,
-      imgPath:''
+      imgPath: ""
     };
   },
   methods: {
     open() {
       (this.dialogFormVisible = true), (this.dialogStatus = "create");
     },
+    close() {
+      this.dialogFormVisible = false;
+      this.$refs.upload.clearFiles();
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.imgData = [];
+    },
     getScreen() {
       let para = {
         page: this.page,
-        type: this.filters.type,
-        name: this.filters.name,
+        // type: this.filters.type,
+        // name: this.filters.name,
         pageSize: this.pageSize,
-        pageNum: this.pageNum
+        pageNum: this.pageNum,
+        activityMaterialName: this.filters.name
       };
       getActiveMaterialPage(para).then(res => {
         this.activeMaterials = res.data.data.list;
         this.total = res.data.data.total;
         this.pageSize = res.data.data.pageSize;
         this.pageNum = res.data.data.pageNum;
-        console.log(res);
       });
       getActiveSelect(para).then(res => {
-        console.log(res);
         this.items = res.data.data;
-        console.log(this.items);
       });
     },
     handleCurrentChange(val) {
@@ -212,66 +221,63 @@ export default {
 
     handleEdit(index, row) {
       this.dialogEditVisible = true;
-      (this.dialogStatus = "updata"), (this.createForm = Object.assign({}, row));
-      console.log(this.createForm)
+      (this.dialogStatus = "updata"),
+        (this.createForm = Object.assign({}, row));
     },
 
     updateData(createForm) {
-      // this.$refs[createForm].validate(valid => {
-        // if (valid) {
-        //   this.$refs.createForm.validate(valid => {
-        //     this.$confirm("确认提交吗？", "提示", {}).then(() => {
-              let para = Object.assign({}, this.createForm);
-              editActivepage(para).then(res => {
+      let para = Object.assign({}, this.createForm);
+      editActivepage(para).then(res => {
+        this.$message({
+          message: "提交成功",
+          type: "success"
+        });
+        // this.$refs["createForm"].resetFields();
+        this.createForm = Object.assign({}, this.newCreateForm);
+        this.dialogEditVisible = false;
+        this.getScreen();
+      });
+    },
+    handleChange(file, fileList) {},
+    createData(createForm) {
+      if (this.imgData.length == 0) {
+        this.$confirm(`请上传图片`);
+      } else {
+        if (this.activityId == "") {
+          this.$confirm("请选择活动");
+        } else {
+          this.$refs[createForm].validate(valid => {
+            if (valid) {
+              for (let i = 0; i < this.imgData.length; i++) {
+                let screens = {};
+                screens.activityMaterialImgName = this.imgData[i].fileNewName;
+                screens.activityMaterialImgPath = this.imgData[i].filePath;
+                screens.activityMaterialName = this.imgData[i].fileOriginName;
+                screens.activityMaterialSize = this.imgData[i].fileSize;
+                screens.activityId = this.activityId;
+                this.activeArr.push(screens);
+              }
+
+              let para = Object.assign([], this.activeArr);
+              addActiveMaterial(para).then(res => {
                 this.$message({
                   message: "提交成功",
                   type: "success"
                 });
-                // this.$refs["createForm"].resetFields();
-                this.dialogEditVisible = false;
+                this.$refs["createForm"].resetFields();
+                this.imgData = [];
+                this.activeArr = [];
+                this.createForm = Object.assign({}, this.newCreateForm);
+                this.dialogFormVisible = false;
                 this.getScreen();
               });
-        //     });
-        //   });
-        // } else {
-        //   console.log("error submit!!");
-        //   return false;
-        // }
-      // });
-    },
-    handleChange(file, fileList) {},
-    createData(createForm) {
-      this.$refs[createForm].validate(valid => {
-        if (valid) {
-          // this.$confirm("确认提交吗？", "提示", {}).then(() => {
-          for (let i = 0; i < this.imgData.length; i++) {
-            console.log(this.imgData[i]);
-            let screens = {};
-            screens.activityMaterialImgName = this.imgData[i].fileNewName;
-            screens.activityMaterialImgPath = this.imgData[i].filePath;
-            screens.activityMaterialName = this.imgData[i].fileOriginName;
-            screens.activityMaterialSize = this.imgData[i].fileSize;
-            screens.activityId = this.activityId;
-            this.activeArr.push(screens);
-          }
-
-          let para = Object.assign([], this.activeArr);
-          addActiveMaterial(para).then(res => {
-            this.$message({
-              message: "提交成功",
-              type: "success"
-            });
-            this.$refs["createForm"].resetFields();
-            this.dialogFormVisible = false;
-            this.getScreen();
+            } else {
+              console.log("error submit!!");
+              return false;
+            }
           });
-          // });
         }
-        // else {
-        //   console.log("error submit!!");
-        //   return false;
-        // }
-      });
+      }
     },
     handlePicturePreview(file) {
       // this.dialogImageUrl = file.url;
@@ -279,26 +285,39 @@ export default {
       alert(1);
     },
     handleRemove(file, fileList) {
-      console.log(file.url, fileList);
+      // console.log(file.url, fileList);
+    },
+    beforeAvatarUpload(file) {
+      const isLt2M = file.size / 1024 / 1024 < 10;
+      if (!isLt2M) {
+        this.$message.error("上传头像图片大小不能超过 10MB!");
+      }
+      return isLt2M;
     },
     handlePictureCardPreview(response, file, fileList) {
       this.imgData.push(response.data);
-      console.log(this.imgData);
     },
-    select(index,row) {
+    select(index, row) {
       this.dialogVisible = true;
-      this.imgPath =row.activityMaterialImgPath
+      this.imgPath = row.activityMaterialImgPath;
     },
     deleteRow(index, rows) {
       rows.splice(index, 1);
     },
-    selectId(vId) {
-      let obj = {};
-      obj = this.items.find(item => {
-        return item.activityId === vId;
-      });
-      console.log(obj.activityType, obj.activityId);
-      this.activityId = obj.activityId;
+    selectId() {
+      this.activityId = this.createForm.activityId;
+    },
+    resetForm(createForm) {
+      this.imgData = [];
+      this.$refs.upload.clearFiles();
+      this.dialogEditVisible = false;
+      this.createForm = Object.assign({}, this.newCreateForm);
+    },
+    resetCreateForm(createForm) {
+      this.dialogFormVisible = false;
+      this.$refs.upload.clearFiles();
+      this.createForm = Object.assign({}, this.newCreateForm);
+      this.imgData = [];
     }
   },
   mounted() {
@@ -307,12 +326,13 @@ export default {
 };
 </script>
 <style>
-img {
-  transition: all 0.5s linear;
-  transform: scale(0.5);
-}
-.big {
-  transform: scale(2);
+.activity::before {
+  position: relative;
+  left: -10px;
+  top: 40px;
+  content: "*";
+  color: #ff4949;
+  margin-right: 4px;
 }
 </style>
 

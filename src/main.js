@@ -1,5 +1,6 @@
 import babelpolyfill from 'babel-polyfill'
 import Vue from 'vue'
+import QRCode from 'qrcode'
 import App from './App'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-default/index.css'
@@ -17,6 +18,7 @@ import 'font-awesome/css/font-awesome.min.css'
 Vue.use(ElementUI)
 Vue.use(VueRouter)
 Vue.use(Vuex)
+Vue.use(QRCode)
 
 //NProgress.configure({ showSpinner: false });
 

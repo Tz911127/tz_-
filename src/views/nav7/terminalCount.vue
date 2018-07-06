@@ -1,84 +1,127 @@
 <template>
 	<section>
-		<!--工具条-->
-		<el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
-			<el-form :inline="true" :model="filters">
-				<el-form-item>
-					<el-input v-model="filters.name" placeholder="姓名"></el-input>
-				</el-form-item>
-				<el-form-item>
-					<el-button type="primary" v-on:click="getUser">查询</el-button>
-				</el-form-item>
-			</el-form>
-		</el-col>
-
-		<!--列表-->
-		<template>
-			<el-table :data="users" highlight-current-row v-loading="loading" style="width: 100%;">
-				<el-table-column type="index" width="60">
-				</el-table-column>
-				<el-table-column prop="name" label="姓名" width="120" sortable>
-				</el-table-column>
-				<el-table-column prop="sex" label="性别" width="100" :formatter="formatSex" sortable>
-				</el-table-column>
-				<el-table-column prop="age" label="年龄" width="100" sortable>
-				</el-table-column>
-				<el-table-column prop="birth" label="生日" width="120" sortable>
-				</el-table-column>
-				<el-table-column prop="addr" label="地址" min-width="180" sortable>
-				</el-table-column>
-			</el-table>
-		</template>
-
+    <!-- 过滤 -->
+    <el-form :inline = true  :model="filters">
+          <el-form-item>
+					    <el-select  v-model="stateType" clearable placeholder="终端类型" @change="selectType">
+					      <el-option v-for="item in items"  :key="item.value" :label = "item.label" :value = "item.value"></el-option>
+				      </el-select>
+          </el-form-item>
+          <el-form-item>
+              <el-select  placeholder="楼层" v-model="floorNum" clearable  @change="selectFloor">
+					      <el-option v-for="option in options"  :key="option.floorId" :label = "option.floorName" :value = "option.floorId">
+              </el-option>
+          </el-select>
+          </el-form-item>
+          <el-form-item style="float:right">
+					  <el-button type="primary" v-on:click="getData">查询</el-button>
+				  </el-form-item>
+              <el-form-item style="float:right"><el-input clearable v-model="filters.findName" placeholder="终端名称"></el-input></el-form-item>
+        </el-form>
+		<el-table :data="terminalDara" style="width:100%">
+      <el-table-column sortable prop="terminalNumber" label="终端编号"></el-table-column>
+			<el-table-column sortable prop="terminalName" label="终端名称"></el-table-column>
+			<el-table-column sortable prop="terminalType" label="终端类型">
+        <template slot-scope="scope">
+           {{scope.row.terminalType | filterType}}
+        </template>
+      </el-table-column>
+			<el-table-column sortable prop="terminalIp" label="终端IP"></el-table-column>
+			<el-table-column sortable prop="floorName" label="楼层"></el-table-column>
+			<el-table-column sortable prop="isTerminalOnline" label="状态">
+				<template slot-scope="scope">
+                {{scope.row.isTerminalOnline | filterOnline}}
+              </template> 
+			</el-table-column>
+			<el-table-column sortable prop="terminalVisitAmount" label="访问量"></el-table-column>
+		</el-table>
+		<!-- 工具 -->
+    <el-col :span="24" class="toolbar">
+        <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="1" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" layout="total, sizes, prev, pager, next, jumper" :total='total'></el-pagination>
+    </el-col>
 	</section>
 </template>
 <script>
-	import { getUserList } from '../../api/api';
-	//import NProgress from 'nprogress'
-	export default {
-		data() {
-			return {
-				filters: {
-					name: ''
-				},
-				loading: false,
-				users: [
-				]
-			}
-		},
-		methods: {
-			//性别显示转换
-			formatSex: function (row, column) {
-				return row.sex == 1 ? '男' : row.sex == 0 ? '女' : '未知';
-			},
-			//获取用户列表
-			getUser: function () {
-				let para = {
-					name: this.filters.name
-				};
-				this.loading = true;
-				//NProgress.start();
-				//getUserList(para)把用户输入的name传给mock中，
-				//res是Mock通过筛选后传回来的数据
-				getUserList(para).then((res) => {
-					this.users = res.data.users;
-					this.loading = false;
-					//NProgress.done();
-				});
-				//getUserList(para){}.then(
-//					function(res){
-						//.....
-//						}
-//					)
-			}
-		},
-		mounted() {
-			this.getUser();
-		}
-	};
-
+import { getTerminalVisits, getStatePage, getFloorPage } from "../../api/api";
+export default {
+  data() {
+    return {
+      terminalDara: [],
+      total: 0,
+      pageSize: 10,
+      pageNum: 1,
+      stateType: "",
+      items: [
+        { label: "二维码", value: 0 },
+        { label: "竖屏", value: 1 },
+        { label: "横屏", value: 2 }
+      ],
+      floorNum: "",
+      options: [],
+      filters: {
+        findName: ""
+      }
+    };
+  },
+  methods: {
+    getData() {
+      let para = {
+        pageSize: this.pageSize,
+        pageNum: this.pageNum,
+        terminalType: this.stateType,
+        floorId: this.floorNum,
+        terminalName:this.filters.findName
+      };
+      getTerminalVisits(para).then(res => {
+        console.log(res.data.data);
+        this.terminalDara = res.data.data.list;
+        this.total = res.data.data.total;
+      });
+      getStatePage(para).then(res => {
+        // this.items = res.data.data.list;
+      });
+      getFloorPage(para).then(res => {
+        this.options = res.data.data.list;
+      });
+    },
+    handleSizeChange(val) {
+      this.pageSize = parseInt(val);
+      this.getData();
+    },
+    handleCurrentChange(val) {
+      this.pageNum = parseInt(val);
+      this.getData();
+    },
+    selectType() {
+      // this.bizFormatId = this.stateType;
+      this.getData();
+    },
+    selectFloor() {
+      // this.floorId = this.floorNum;
+      this.getData();
+    }
+  },
+  filters: {
+    filterOnline(data) {
+      if (Number(data) == 0) {
+        return "离线";
+      } else {
+        return "在线";
+      }
+    },
+    filterType(data) {
+      if (Number(data) == 0) {
+        return "二维码";
+      } else if (Number(data) == 1) {
+        return "竖屏";
+      } else {
+        return "横屏";
+      }
+    }
+  },
+  mounted() {
+    this.getData();
+  }
+};
 </script>
 
-<style scoped>
-
-</style>
