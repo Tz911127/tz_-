@@ -10,7 +10,6 @@
            <el-select  v-model="createForm.floorId" placeholder="请选择">
              <el-option v-for="floor in floorData" :key="floor.floorId" :label="floor.floorName" :value="floor.floorId"></el-option>
            </el-select>
-           <!-- <el-input v-else v-model="createForm.floorId"></el-input> -->
          </el-form-item>
          <el-form-item label="上传地图" prop="mapImgPath">
            <el-upload

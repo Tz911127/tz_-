@@ -104,6 +104,7 @@
 
       <el-table :data="tableData"  @selection-change="handleSelectionChange" ref="multipleTable" style="width: 100%" tooltip-effect="dark" >
         <el-table-column type="selection" width="55" sortable></el-table-column>
+        <el-table-column prop="terminalNumber" label="终端编号"></el-table-column>
         <el-table-column prop='terminalName' width="120" label="终端名称" sortable></el-table-column>
         <el-table-column prop='terminalType' width="120" label="终端类型" sortable>
           <template slot-scope="scope">

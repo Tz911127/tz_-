@@ -9,12 +9,13 @@
                {{createForm.floorNumber | capitalize }}
              </template>
           </el-input>
-           <!-- {{createForm.floorNumber | capitalize }} -->
 				</el-form-item>
         <el-form-item  prop="floorName"  label="楼层名称">
-          <!--  style="text-transform: uppercase" -->
 					<el-input v-model="createForm.floorName" placeholder="例：01"></el-input>
 				</el-form-item>
+        <el-form-item prop="sortNumber" label="楼层序号">
+          <el-input v-model.number="createForm.sortNumber" ></el-input>
+        </el-form-item>
         <el-form-item>
           <template slot-scope="scope">
             <el-button v-if="dialogStatus=='create'" type="primary" @click="createData('createForm')">添加</el-button>
@@ -32,7 +33,8 @@
 			</el-table-column>
 			<el-table-column prop="floorName" label="楼层名称" width="300px" sortable>
 			</el-table-column>
-			<el-table-column label="操作" min-width="300px">
+      <el-table-column prop="sortNumber" label="楼层序号" sortable></el-table-column>
+			<el-table-column label="操作">
 				<template slot-scope="scope">
 					<el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
 					<el-button type="danger" size="small" @click="handleDel(scope.$index, scope.row)">删除</el-button>
@@ -53,11 +55,13 @@ export default {
     return {
       createForm: {
         floorName: "",
-        floorNumber: ""
+        floorNumber: "",
+        sortNumber: 1
       },
       newCreateForm: {
         floorName: "",
-        floorNumber: ""
+        floorNumber: "",
+        sortNumber: 1
       },
       dialogFormVisible: false,
       dialogStatus: "",
@@ -77,6 +81,10 @@ export default {
         floorName: [{ required: true, message: "请输入楼层", trigger: "blur" }],
         floorNumber: [
           { required: true, message: "请输入楼层名称", trigger: "blur" }
+        ],
+        sortNumber: [
+          { required: true, message: "楼层序号不能为空" },
+          { type: "number", message: "楼层序号必须为数字值" }
         ]
       }
     };
@@ -120,6 +128,7 @@ export default {
                 type: "success"
               });
               this.$refs["createForm"].resetFields();
+              this.createForm = Object.assign({}, this.newCreateForm);
               this.dialogFormVisible = false;
               this.getFloors();
             }
@@ -166,7 +175,6 @@ export default {
       this.$refs[createForm].validate(valid => {
         if (valid) {
           this.$refs.createForm.validate(valid => {
-            // this.$confirm("确认提交吗？", "提示", {}).then(() => {
             let para = Object.assign({}, this.createForm);
             editFloor(para).then(res => {
               if (res.data.code == 30002) {
@@ -181,10 +189,10 @@ export default {
                   type: "success"
                 });
                 this.$refs["createForm"].resetFields();
+                this.createForm = Object.assign({}, this.newCreateForm);
                 this.dialogFormVisible = false;
                 this.getFloors();
               }
-              // });
             });
           });
         } else {

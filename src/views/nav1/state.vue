@@ -10,7 +10,7 @@
 					<el-input v-model="createForm.bizFormatType" placeholder="例：餐饮"></el-input>
 				</el-form-item>
         <el-form-item prop="bizFormatPid" label="业态序号">
-          <el-input v-model="createForm.bizFormatPid"></el-input>
+          <el-input v-model.number="createForm.bizFormatPid"></el-input>
         </el-form-item>
         <el-form-item>
           <template slot-scope="scope">   
@@ -48,15 +48,25 @@
 import { getStatePage, removeState, addState, editState } from "../../api/api";
 export default {
   data() {
+    var checkAge = (rule, value, callback) => {
+      if (!value) {
+        return callback(new Error("业态编号不能为空"));
+      }
+      setTimeout(() => {
+        if (!Number.isInteger(value)) {
+          callback(new Error("请输入数字值"));
+        } else {
+          callback();
+        }
+      }, 300);
+    };
     return {
       createForm: {
-        // bizFormatId: "",
         bizFormatNumber: "",
         bizFormatType: "",
         bizFormatPid: 1
       },
       newCreateForm: {
-        // bizFormatId: "",
         bizFormatNumber: "",
         bizFormatType: "",
         bizFormatPid: 1
@@ -83,12 +93,9 @@ export default {
           { required: true, message: "请输入业态名称", trigger: "blur" }
         ],
         bizFormatPid: [
-          {
-            type: "number",
-            required: true,
-            message: "请输入业态序号(必须为数字值)",
-            trigger: "blur"
-          }
+          // { required: true, message: "业态序号不能为空" },
+          // { type: "number", message: "业态序号必须为数字值" }
+          { required: true, validator: checkAge, trigger: "blur" }
         ]
       }
     };
@@ -97,6 +104,8 @@ export default {
     open() {
       this.dialogFormVisible = true;
       this.dialogStatus = "create";
+
+      console.log(this.createForm);
     },
     close() {
       this.dialogFormVisible = false;
@@ -116,8 +125,6 @@ export default {
     createData(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
-          // this.$confirm("确认提交吗？", "提示", {}).then(() => {
-          // this.createForm.bizFormatId = parseInt(Math.random() * 100).toString();
           let para = Object.assign({}, this.createForm);
           addState(para).then(res => {
             if (res.data.code == 30002) {
@@ -194,6 +201,7 @@ export default {
                   type: "success"
                 });
                 this.$refs["createForm"].resetFields();
+                this.createForm = Object.assign({}, this.newCreateForm);
                 this.dialogFormVisible = false;
                 this.getStates();
               }

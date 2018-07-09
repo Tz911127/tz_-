@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 
-let base = 'http://192.168.1.146:9000'
-// let base = 'http://192.168.1.103:9000'
-// let base = 'http://47.94.202.250:9000'
+// let base = 'http://192.168.1.146:9000'
+// let base = 'http://192.168.1.107:9000'
+let base = 'http://47.94.202.250:9000'
 
 export const requestLogin = params => { return axios.post(`${base}/user/login`, params)};
 

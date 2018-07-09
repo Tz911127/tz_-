@@ -67,7 +67,7 @@
 				<template slot-scope="scope">
 					<img :src="scope.row.screensaverMaterialImgPath" @click="select(scope.$index, scope.row)" width="40" height="40" style="cursor:pointer" class="head_pic"/>
           <el-dialog :visible.sync="dialogVisible">
-            <img width="600px" height="400px" :src="ImgPath">
+            <img width="100%" :src="ImgPath">
           </el-dialog>
 				</template>
 			</el-table-column>

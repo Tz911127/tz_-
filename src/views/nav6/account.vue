@@ -42,6 +42,7 @@
 </template>
 <script>
 import { getUser, addUserName, removeUserName } from "../../api/api";
+var MD5 = require("md5.js");
 export default {
   data() {
     return {
@@ -54,7 +55,7 @@ export default {
       },
       createForm: {
         userName: "",
-        userName: "",
+        userLoginname: "",
         userPassword: ""
       },
       rules: {
@@ -65,7 +66,8 @@ export default {
           { required: true, message: "请输入账号名称", trigger: "blur" }
         ],
         userPassword: [
-          { required: true, message: "请输入密码", trigger: "blur" }
+          { required: true, message: "请输入密码", trigger: "blur" },
+          { min: 4, max: 12, message: "长度在 4 到 12个字符", trigger: "blur" }
         ]
       },
       pageSize: 10,
@@ -94,7 +96,14 @@ export default {
     submitForm(createForm) {
       this.$refs[createForm].validate(valid => {
         if (valid) {
-          let para = Object.assign({}, this.createForm);
+          // let para = Object.assign({}, this.createForm);
+          let para = {
+            userName: this.createForm.userName,
+            userLoginname: this.createForm.userLoginname,
+            userPassword: new MD5()
+              .update(this.createForm.userPassword)
+              .digest("hex")
+          };
           addUserName(para).then(res => {
             if (res.data.code == 30002) {
               this.$confirm("登录账号重复");

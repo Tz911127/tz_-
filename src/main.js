@@ -8,6 +8,7 @@ import 'element-ui/lib/theme-default/index.css'
 import VueRouter from 'vue-router'
 import store from './vuex/store'
 import Vuex from 'vuex'
+// import md5 from 'md5.js'
 //import NProgress from 'nprogress'
 //import 'nprogress/nprogress.css'
 import routes from './routes'
@@ -19,6 +20,7 @@ Vue.use(ElementUI)
 Vue.use(VueRouter)
 Vue.use(Vuex)
 Vue.use(QRCode)
+// Vue.use(md5)
 
 //NProgress.configure({ showSpinner: false });
 

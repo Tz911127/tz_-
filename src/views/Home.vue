@@ -4,11 +4,11 @@
 			<el-col :span="10" class="logo" :class="collapsed?'logo-collapse-width':'logo-width'">
 				<img :src="this.sysLogo" />
 			</el-col>
-			<el-col :span="4">
+			<!-- <el-col :span="4">
 				<div class="tools" @click.prevent="collapse">
 				</div>
-			</el-col>
-			<el-col :span="10" class="userinfo">
+			</el-col> -->
+			<el-col :span="14" class="userinfo">
         <el-button type="primary" @click="open">参数设置</el-button>
         <el-button type="primary" @click.native="logout">退出登录</el-button>
 			</el-col>
@@ -26,22 +26,7 @@
 						<el-menu-item v-if="item.leaf&&item.children.length>0" :key="index" :index="item.children[0].path"><i :class="item.iconCls"></i>{{item.children[0].name}}</el-menu-item>
 					</template>
 				</el-menu>
-				<!--导航菜单-折叠后-->
-				<ul class="el-menu el-menu-vertical-demo collapsed" v-show="collapsed" ref="menuCollapsed">
-					<li v-for="(item,index) in $router.options.routes" :key="index" v-if="!item.hidden" class="el-submenu item">
-						<template v-if="!item.leaf">
-							<div class="el-submenu__title" style="padding-left: 20px;" @mouseover="showMenu(index,true)" @mouseout="showMenu(index,false)"><i :class="item.iconCls"></i></div>
-							<ul class="el-menu submenu" :class="'submenu-hook-'+index" @mouseover="showMenu(index,true)" @mouseout="showMenu(index,false)"> 
-								<li v-for="child in item.children" v-if="!child.hidden" :key="child.path" class="el-menu-item" style="padding-left: 40px;" :class="$route.path==child.path?'is-active':''" @click="$router.push(child.path)">{{child.name}}</li>
-							</ul>
-						</template>
-						<template v-else>
-							<li class="el-submenu">
-								<div class="el-submenu__title el-menu-item" style="padding-left: 20px;height: 56px;line-height: 56px;padding: 0 20px;" :class="$route.path==item.children[0].path?'is-active':''" @click="$router.push(item.children[0].path)"><i :class="item.iconCls"></i></div>
-							</li>
-						</template>
-					</li>
-				</ul>
+			
 			</aside>
 			<section class="content-container">
 				<div class="grid-content bg-purple-light">
@@ -65,24 +50,6 @@
       <el-form :model="createForm" ref="createForm" :rules="rules" style="100%" label-width="120px">
         <el-form-item label="开关机时间" prop="on_off">
           <el-input v-model="createForm.on_off" ></el-input>
-            <!-- <el-time-select
-              v-model="createForm.on_off"
-              :picker-options="{
-                start: '00:00',
-                step: '00:30',
-                end: '24:00'
-              }"
-              placeholder="选择时间">
-            </el-time-select> -->
-            <!-- <el-time-picker
-              is-range
-              v-model="createForm.on_off"
-              range-separator="至"
-              start-placeholder="开始时间"
-              end-placeholder="结束时间"
-              placeholder="选择时间范围">
-            </el-time-picker> -->
-
 
         </el-form-item>
         <el-form-item label="轮播间隔时间(s)" prop="delay">
@@ -103,6 +70,7 @@
 <script>
 import logo from "../assets/logo.png";
 import { config, getConfig, loginOut } from "../api/api";
+
 export default {
   data() {
     return {
@@ -143,7 +111,7 @@ export default {
         ],
         protect: [
           { required: true, message: "请输入屏保时长", trigger: "blur" }
-        ],
+        ]
       }
     };
   },
@@ -174,7 +142,7 @@ export default {
       })
         .then(() => {
           // sessionStorage.removeItem("user");
-          let para = window.localStorage.getItem('token');
+          let para = window.localStorage.getItem("token");
           loginOut(para).then(res => {
             _this.$router.push("/login");
           });
@@ -183,27 +151,23 @@ export default {
         .catch(() => {});
     },
     //折叠导航栏
-    collapse: function() {
-      //   this.collapsed = !this.collapsed;
-    },
-    showMenu(i, status) {
-      this.$refs.menuCollapsed.getElementsByClassName(
-        "submenu-hook-" + i
-      )[0].style.display = status ? "block" : "none";
-    },
+
     open() {
       this.dialogFormVisible = true;
       this.getfig();
     },
     createData(createForm) {
-      // console.log(this.value4);
       this.$refs[createForm].validate(valid => {
         if (valid) {
           let para = Object.assign({}, this.createForm);
-          console.log(para);
+
           config(para).then(res => {
-            this.dialogFormVisible = false;
-            this.$refs[createForm].resetFields();
+            if (res.data.code == 10001) {
+              this.$confirm(res.data.data);
+            } else {
+              this.dialogFormVisible = false;
+              this.$refs[createForm].resetFields();
+            }
           });
         } else {
           console.log("error submit!!");
@@ -217,7 +181,6 @@ export default {
     },
     getfig() {
       getConfig().then(res => {
-        console.log(res.data.data);
         this.createForm = res.data.data;
       });
     }
@@ -269,7 +232,7 @@ export default {
       font-size: 22px;
       padding-left: 20px;
       padding-right: 20px;
-      border-color: rgba(238, 241, 146, 0.3);
+      border-color: #20a0ff;
       border-right-width: 1px;
       border-right-style: solid;
       img {
